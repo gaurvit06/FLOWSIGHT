@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nids"
+version = "0.1.0"
+description = "Machine-learning Network Intrusion Detection System with explainable predictions"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "shap>=0.44",
+    "joblib",
+    "pyyaml",
+    "fastapi",
+    "uvicorn[standard]",
+    "httpx",
+    "streamlit",
+    "plotly",
+    "matplotlib",
+    "imbalanced-learn",
+    "tabulate",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "nbformat"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100

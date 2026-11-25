@@ -1,0 +1,222 @@
+{
+  "classes": [
+    "Benign",
+    "BruteForce",
+    "DDoS",
+    "DoS",
+    "PortScan"
+  ],
+  "features": [
+    "Destination Port",
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Fwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "selected_features": [
+    "Destination Port",
+    "Flow Duration",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow IAT Max",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "Avg Bwd Segment Size",
+    "Init_Win_bytes_forward",
+    "min_seg_size_forward",
+    "Idle Mean",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "metrics": {
+    "accuracy": 0.9992529781535845,
+    "macro_f1": 0.9977564561569302,
+    "weighted_f1": 0.9992539385388881,
+    "roc_auc_ovr": 0.9999236872471456,
+    "false_positive_rate": 0.0006491460865082623,
+    "per_class": {
+      "Benign": {
+        "precision": 0.9997930727110659,
+        "recall": 0.9993508539134918,
+        "f1-score": 0.9995719144019771,
+        "support": 314259.0
+      },
+      "BruteForce": {
+        "precision": 0.9985390796201608,
+        "recall": 0.9963556851311953,
+        "f1-score": 0.9974461875228019,
+        "support": 1372.0
+      },
+      "DDoS": {
+        "precision": 0.9994270534923694,
+        "recall": 0.9992709092802833,
+        "f1-score": 0.9993489752871019,
+        "support": 19202.0
+      },
+      "DoS": {
+        "precision": 0.9980050218415712,
+        "recall": 0.9983827678755763,
+        "f1-score": 0.9981938591210114,
+        "support": 29062.0
+      },
+      "PortScan": {
+        "precision": 0.9893725433105256,
+        "recall": 0.9991179064980888,
+        "f1-score": 0.9942213444517592,
+        "support": 13604.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        314055,
+        2,
+        11,
+        48,
+        143
+      ],
+      [
+        4,
+        1367,
+        0,
+        0,
+        1
+      ],
+      [
+        12,
+        0,
+        19188,
+        2,
+        0
+      ],
+      [
+        45,
+        0,
+        0,
+        29015,
+        2
+      ],
+      [
+        4,
+        0,
+        0,
+        8,
+        13592
+      ]
+    ],
+    "latency_ms_per_flow": 26.815716500000235,
+    "train_seconds": 49.291090200000326,
+    "val_macro_f1": 0.9972696459196462
+  },
+  "config": {
+    "seed": 42,
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_path": "data/processed/flows.parquet",
+      "sample_frac": 1.0,
+      "test_size": 0.15,
+      "val_size": 0.15,
+      "max_train_rows": 600000,
+      "drop_other": true
+    },
+    "features": {
+      "k": 20,
+      "method": "tree"
+    },
+    "xgb_weight_power": 0.5,
+    "models": [
+      "rf",
+      "xgb",
+      "svm"
+    ],
+    "svm_max_rows": 200000,
+    "anomaly": {
+      "quantile": 0.005,
+      "min_benign_confidence": 0.9
+    },
+    "artifacts_dir": "models",
+    "thresholds": {
+      "macro_f1": 0.9,
+      "attack_recall": 0.9
+    }
+  },
+  "train_rows": 600000,
+  "split_rows": {
+    "train": 600000,
+    "validation": 377499,
+    "test": 377499
+  },
+  "name": "rf",
+  "trained_at": "2026-11-25T18:07:10.100739+00:00"
+}

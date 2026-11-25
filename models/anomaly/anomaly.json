@@ -1,0 +1,11 @@
+{
+  "threshold": -0.6669151836945149,
+  "quantile": 0.005,
+  "metrics": {
+    "benign_false_alarm_rate": 0.004849503116855842,
+    "attack_flag_rate": 0.00014231499051233396,
+    "rule_benign_false_alarm_rate": 0.005069067234351283,
+    "classifier_missed_attacks": 33,
+    "missed_attacks_recovered": 0.6666666666666666
+  }
+}

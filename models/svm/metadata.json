@@ -1,0 +1,222 @@
+{
+  "classes": [
+    "Benign",
+    "BruteForce",
+    "DDoS",
+    "DoS",
+    "PortScan"
+  ],
+  "features": [
+    "Destination Port",
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Fwd IAT Total",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Bwd IAT Total",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Fwd PSH Flags",
+    "Fwd URG Flags",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Packets/s",
+    "Bwd Packets/s",
+    "Min Packet Length",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWE Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Avg Fwd Segment Size",
+    "Avg Bwd Segment Size",
+    "Fwd Header Length.1",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "Init_Win_bytes_forward",
+    "Init_Win_bytes_backward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "selected_features": [
+    "Destination Port",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Flow IAT Max",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Max Packet Length",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "Average Packet Size",
+    "Avg Bwd Segment Size",
+    "Init_Win_bytes_forward",
+    "min_seg_size_forward",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "metrics": {
+    "accuracy": 0.9442965411828905,
+    "macro_f1": 0.6753974794737827,
+    "weighted_f1": 0.9407272575005765,
+    "roc_auc_ovr": 0.9920056177504686,
+    "false_positive_rate": 0.018115630737703614,
+    "per_class": {
+      "Benign": {
+        "precision": 0.9572598133044614,
+        "recall": 0.9818843692622964,
+        "f1-score": 0.9694157417036076,
+        "support": 314259.0
+      },
+      "BruteForce": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1372.0
+      },
+      "DDoS": {
+        "precision": 0.9799243788260713,
+        "recall": 0.5668680345797312,
+        "f1-score": 0.7182448036951501,
+        "support": 19202.0
+      },
+      "DoS": {
+        "precision": 0.9421333953056007,
+        "recall": 0.8369692381804418,
+        "f1-score": 0.8864431486880466,
+        "support": 29062.0
+      },
+      "PortScan": {
+        "precision": 0.7044723116191322,
+        "recall": 0.9332549250220523,
+        "f1-score": 0.8028837032821097,
+        "support": 13604.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        308566,
+        208,
+        12,
+        160,
+        5313
+      ],
+      [
+        1370,
+        0,
+        0,
+        0,
+        2
+      ],
+      [
+        6991,
+        0,
+        10885,
+        1326,
+        0
+      ],
+      [
+        4516,
+        0,
+        211,
+        24324,
+        11
+      ],
+      [
+        900,
+        0,
+        0,
+        8,
+        12696
+      ]
+    ],
+    "latency_ms_per_flow": 2.014049999997951,
+    "train_seconds": 39.36377319999974,
+    "val_macro_f1": 0.673371372889828
+  },
+  "config": {
+    "seed": 42,
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_path": "data/processed/flows.parquet",
+      "sample_frac": 1.0,
+      "test_size": 0.15,
+      "val_size": 0.15,
+      "max_train_rows": 600000,
+      "drop_other": true
+    },
+    "features": {
+      "k": 20,
+      "method": "tree"
+    },
+    "xgb_weight_power": 0.5,
+    "models": [
+      "rf",
+      "xgb",
+      "svm"
+    ],
+    "svm_max_rows": 200000,
+    "anomaly": {
+      "quantile": 0.005,
+      "min_benign_confidence": 0.9
+    },
+    "artifacts_dir": "models",
+    "thresholds": {
+      "macro_f1": 0.9,
+      "attack_recall": 0.9
+    }
+  },
+  "train_rows": 200000,
+  "split_rows": {
+    "train": 600000,
+    "validation": 377499,
+    "test": 377499
+  },
+  "name": "svm",
+  "trained_at": "2026-11-25T18:08:25.065981+00:00"
+}
