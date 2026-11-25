@@ -49,28 +49,37 @@ python -m uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
 
 python scripts/make_sample_data.py      # synthetic data so everything runs today
 python -m nids.models.train             # trains RF/XGB/SVM + anomaly detector + profiles
-pytest                                  # 45 tests, including a model quality gate
+pytest                                  # 49 tests, including a model quality gate
 ```
 
 Then use three terminals:
 
 ```powershell
 uvicorn nids.api.main:app --port 8000                 # API, docs at http://localhost:8000/docs
-streamlit run dashboard/Overview.py                        # dashboard at http://localhost:8501
+streamlit run dashboard/Overview.py                   # dashboard at http://localhost:8501
 python -m nids.capture.replay --n 500 --delay 0.05    # stream traffic through it
 ```
+
+Dashboard pages: **Overview** (KPIs, drift banner, top alerts) · **Incidents** (timeline,
+drill-down) · **Investigate** (what-if sliders) · **Models** (comparison, fingerprints,
+reports) · **Feedback** (review queue, precision, export) · **Analyse File** (upload a CSV,
+confidence threshold, "needs review" triage, annotated CSV download) · **Method & Limits**
+(pipeline diagram, training protocol, limitations, dataset audit, model card).
 
 Or with Docker (after training on the host): `docker compose up --build`.
 
 ## Experiments (for the report)
 
-Every script writes a Markdown report to `reports/` (shown on the dashboard's Models page) and
-figures to `reports/figures/`. All modelling decisions use the training data (cross-validation
-or a validation split carved from it). The held-out test set is used only by the final
-evaluation in `train.py`.
+Every script writes a Markdown report to `reports/` (shown on the dashboard) and figures to
+`reports/figures/`. Data is split **70 / 15 / 15** (train / validation / test). Every
+modelling decision, including which model is served, uses the training or validation data.
+The test set is used once, for the final numbers. See [DECISIONS.md](DECISIONS.md) for why.
 
 | Script | What it answers |
 |---|---|
+| `scripts/fetch_dataset.py --zip <file>` | Extract CIC-IDS2017 into `data/raw/`, record SHA-256 checksums, remove synthetic data |
+| `scripts/audit_dataset.py` | `reports/DATASET.md`: provenance, per-file rows/labels/inf/NaN/duplicates, cleaning log, class balance |
+| `scripts/model_card.py` | `reports/MODEL_CARD.md`: intended use, data, split, per-class results, limitations |
 | `scripts/cv_report.py [--tune]` | Stratified 5-fold CV, mean ± std for every model (+ random hyperparameter search) |
 | `scripts/feature_selection_study.py` | Macro-F1 vs. number of features for ANOVA F, mutual information and RF importance |
 | `scripts/imbalance_ablation.py` | Nothing vs. class weights vs. SMOTE (SMOTE applied inside training only) |
@@ -83,12 +92,15 @@ Use `--max-rows` to subsample the training data for speed (default 200,000).
 
 ## Real datasets
 
-1. **CIC-IDS2017**: download `MachineLearningCSV.zip` from the Canadian Institute for
-   Cybersecurity (unb.ca/cic/datasets/ids-2017.html) and unzip the 8 CSVs into `data/raw/`.
-2. **Delete** `data/raw/sample_synthetic.csv` and `data/processed/flows.parquet`.
-3. Set `sample_frac: 0.1` in `configs/train.yaml` while developing.
-4. Run `python -m nids.models.train --rebuild`.
-5. For the generalization report card, put **CSE-CIC-IDS2018** CSVs in e.g.
+1. **CIC-IDS2017**: on unb.ca/cic/datasets/ids-2017.html choose *Download this dataset*,
+   fill in the short registration form, and download `CSVs/MachineLearningCSV.zip` (~230 MB).
+2. `python scripts/fetch_dataset.py --zip <path to MachineLearningCSV.zip>`
+   (extracts the 8 CSVs, writes checksums, removes synthetic data and stale caches)
+3. `python scripts/audit_dataset.py` → `reports/DATASET.md`
+4. `python -m nids.models.train --rebuild` (training rows are capped by `max_train_rows` in
+   `configs/train.yaml` to fit in memory; validation and test stay full size)
+5. `python scripts/model_card.py`, then the experiment scripts above.
+6. For the generalization report card, put **CSE-CIC-IDS2018** CSVs in e.g.
    `data/cse-cic-ids2018/` and run
    `python scripts/cross_dataset.py --test-dir data/cse-cic-ids2018 --name "CSE-CIC-IDS2018"`.
    Column names that differ are mapped in `src/nids/data/columns.py`.

@@ -24,7 +24,8 @@ def tiny_cfg():
     return {
         "seed": 0,
         "data": {"test_size": 0.25},
-        "features": {"k": 8, "method": "f_classif"},
+        "features": {"k": 8, "method": "tree"},
+        "anomaly": {"quantile": 0.005, "min_benign_confidence": 0.9},
         "models": ["rf", "xgb"],
         "svm_max_rows": 2000,
     }

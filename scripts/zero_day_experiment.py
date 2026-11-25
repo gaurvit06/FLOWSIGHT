@@ -31,7 +31,9 @@ def main() -> None:
     det = AnomalyDetector(cfg.get("anomaly", {}).get("quantile", 0.005), cfg["seed"])
     det.fit(X_train[y_train == benign])
     benign_test = X_test[y_test == benign]
-    benign_fa = float(det.is_anomaly(benign_test).mean())
+    benign_odd = det.is_anomaly(benign_test)
+    min_conf = cfg.get("anomaly", {}).get("min_benign_confidence", 0.0)
+    fa_rates = []
 
     rows = []
     for held_out in (c for c in classes if c != "Benign"):
@@ -42,16 +44,23 @@ def main() -> None:
         y_tr = np.array([remap[v] for v in y_train[keep]])
         pipe, _ = fit_one(args.model, X_train[keep], y_tr, cfg, X_train.shape[1])
 
+        b = remap[benign]
+
+        def unknown_rule(X, odd, pipe=pipe, b=b):
+            p = pipe.predict_proba(X)
+            said_benign = p.argmax(axis=1) == b
+            return said_benign, said_benign & (odd | (p[:, b] < min_conf))
+
         X_zd = X_test[y_test == h]
-        pred = pipe.predict(X_zd)
-        said_benign = pred == remap[benign]
-        anomalous = det.is_anomaly(X_zd)
+        said_benign, flagged = unknown_rule(X_zd, det.is_anomaly(X_zd))
+        _, benign_flagged = unknown_rule(benign_test, benign_odd)
+        fa_rates.append(float(benign_flagged.mean()))
         by_clf = float((~said_benign).mean())
-        by_det = float((said_benign & anomalous).mean())
+        by_det = float(flagged.mean())
         rows.append({
             "held-out attack": held_out, "test flows": len(X_zd),
             "caught by classifier (as another attack)": by_clf,
-            "caught only by anomaly detector": by_det,
+            "caught only by unknown-attack rule": by_det,
             "total caught": by_clf + by_det,
             "missed": 1 - by_clf - by_det,
         })
@@ -63,12 +72,14 @@ def main() -> None:
     pct.insert(0, "test flows", t["test flows"])
     write_report("zero_day", "\n".join([
         "# Zero-day experiment (leave one attack out)", "",
-        (f"Classifier: {args.model}. The anomaly detector is trained on benign flows only and "
-        f"raises false alarms on **{benign_fa:.2%}** of benign test flows."), "",
+        (f"Classifier: {args.model}. Unknown-attack rule: the classifier says Benign but "
+         f"either the anomaly detector (Isolation Forest + range rule, benign-only) fires or the "
+         f"classifier is less than {min_conf:.0%} sure. It raises false alarms on "
+         f"**{np.mean(fa_rates):.2%}** of benign test flows (mean over the runs)."), "",
         pct.to_markdown(), "",
         ("*Caught by classifier* means the model had never seen this attack but still called "
-        "it an attack (a different type). *Caught only by anomaly detector* is what the "
-        "unknown-attack detector adds on top."),
+         "it an attack (a different type). *Caught only by unknown-attack rule* is what the "
+         "rule adds on top."),
     ]))
 
 

@@ -83,10 +83,10 @@ phase until the previous one meets its "done when".
 
 ### Phase 1: Real data and EDA (Week 1)
 
-- [ ] Download CICIDS2017 into `data/raw/` and delete the synthetic CSV
+- [x] Download CICIDS2017 into `data/raw/` and delete the synthetic CSV (`scripts/fetch_dataset.py`)
 - [x] `notebooks/01_eda.ipynb`: class balance, missing/inf counts, duplicate rate, feature
       correlation heatmap, distributions of 5 key features per class
-- [ ] Record in the notebook how many rows cleaning removes and why
+- [x] Record how many rows cleaning removes and why (`reports/DATASET.md`)
 - [ ] Decide whether to keep `Destination Port` as a feature. It helps catch brute force
       (22/21), but the model may then just memorise ports. Try both and record the result.
 
@@ -340,3 +340,19 @@ nids/
 5. **Explaining with scaled values:** stories must show raw values (packets/s, bytes), not
    z-scores. The scaffold already does this.
 6. **Pointing attack tools at real networks:** lab VMs only.
+
+---
+
+## 11. Upgrade: lessons from comparing with another NIDS project
+
+Ideas adopted (re-implemented for FlowSight, no code copied) and fixes found on real data:
+
+- [x] 70 / 15 / 15 train / validation / test; the served model is **chosen on validation**
+- [x] `scripts/fetch_dataset.py`: extract the official zip, SHA-256 checksums, remove synthetic data
+- [x] `scripts/audit_dataset.py` → `reports/DATASET.md` (provenance, per-file quality, cleaning log)
+- [x] `scripts/model_card.py` → `reports/MODEL_CARD.md`
+- [x] Dashboard **Method & Limits** page (pipeline diagram, protocol, limitations, audit, model card)
+- [x] Analyse File: confidence threshold, *needs review* triage, annotated CSV download
+- [x] `DECISIONS.md` decision log (D1–D17)
+- [x] Real-data fixes: tree-based feature selection (D15), softer XGBoost weights (D14),
+      training-row cap (D16), confidence-based unknown-attack rule (D17)

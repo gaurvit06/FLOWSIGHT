@@ -88,7 +88,13 @@ def _is_unusual(feature: str, value: float, base: dict | None) -> bool:
     return value > base["p95"] or value < base["p5"]
 
 
-def story(label: str, confidence: float, top_features: list[dict], baseline: dict) -> str:
+def story(label: str, confidence: float, top_features: list[dict], baseline: dict,
+          note: str | None = None) -> str:
+    text = _story(label, confidence, top_features, baseline)
+    return f"{text} {note}" if note else text
+
+
+def _story(label: str, confidence: float, top_features: list[dict], baseline: dict) -> str:
     top = top_features[:4]
     # Prefer reasons that are actually unusual; "within the normal range" explains nothing.
     strong = [f for f in top if _is_unusual(f["feature"], f["value"],

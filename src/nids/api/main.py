@@ -68,6 +68,7 @@ def _predict(flows: list[FlowIn], store: bool = True) -> list[Prediction]:
     pipe, meta, explainer = state["pipe"], state["meta"], state["explainer"]
     detector, baseline, conn = state["detector"], state["baseline"], state["conn"]
     classes = meta["classes"]
+    min_conf = meta["config"].get("anomaly", {}).get("min_benign_confidence")
     X = _to_frame(flows)
     proba = pipe.predict_proba(X)
     anomaly = detector.anomaly_score(X) if detector else None
@@ -78,12 +79,20 @@ def _predict(flows: list[FlowIn], store: bool = True) -> list[Prediction]:
         label, confidence = classes[idx], float(proba[i, idx])
         row = X.iloc[[i]]
         a_score = float(anomaly[i]) if anomaly is not None else None
+        note = None
 
-        if label == BENIGN and a_score is not None and a_score > 0:
-            # Classifier is happy, but the flow is unlike any benign traffic seen in training
+        odd = a_score is not None and a_score > 0             # unlike any benign flow
+        unsure = min_conf is not None and confidence < min_conf  # classifier doubts "Benign"
+        if label == BENIGN and (odd or unsure):
             label = UNKNOWN
-            confidence = float(min(0.5 + a_score * 5, 0.99))
+            p_benign = confidence
+            confidence = max(1 - p_benign, min(0.5 + a_score * 5, 0.99) if odd else 0.0)
             explanation = unusual_features(row.iloc[0].to_dict(), baseline)
+            if not explanation:
+                # nothing out of range: explain what pulls it towards the runner-up class
+                explanation = explainer.explain(row, int(proba[i].argsort()[-2]))
+            if unsure:
+                note = f"The model is only {p_benign:.0%} sure this is normal traffic."
         elif label != BENIGN:
             # SHAP only for alerts: it costs a few ms, and analysts only read alerts
             explanation = explainer.explain(row, idx)
@@ -91,7 +100,7 @@ def _predict(flows: list[FlowIn], store: bool = True) -> list[Prediction]:
             explanation = []
 
         is_attack = label != BENIGN
-        text = make_story(label, confidence, explanation, baseline)
+        text = make_story(label, confidence, explanation, baseline, note=note)
         pred = Prediction(
             label=label, confidence=confidence, is_attack=is_attack,
             probabilities={c: float(p) for c, p in zip(classes, proba[i])},
@@ -155,7 +164,8 @@ def baseline():
 def reports():
     """Experiment results written by the scripts in scripts/ (if they have been run)."""
     out = {}
-    for name in ("results", "zero_day", "cross_dataset"):
+    for name in ("results", "zero_day", "cross_dataset", "feature_selection", "imbalance",
+                 "shap_global", "DATASET", "MODEL_CARD"):
         p = ROOT / "reports" / f"{name}.md"
         if p.exists():
             out[name] = p.read_text("utf-8")

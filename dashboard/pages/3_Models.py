@@ -29,10 +29,15 @@ st.caption("Picked by macro-F1, which weights every attack class equally. Accura
 
 if data.get("anomaly"):
     am = data["anomaly"]["metrics"]
-    c1, c2, _ = st.columns([1, 1, 2])
-    kpi(c1, "Unknown-attack detector · attacks flagged", f"{am['attack_flag_rate']:.0%}",
-        "attacks it would catch with no labels at all", "#22d3ee")
-    kpi(c2, "… benign false alarms", f"{am['benign_false_alarm_rate']:.2%}", "", "#22c55e")
+    rec = am.get("missed_attacks_recovered")
+    c1, c2, c3 = st.columns(3)
+    kpi(c1, "Missed attacks recovered", "–" if rec is None else f"{rec:.0%}",
+        f"of {am.get('classifier_missed_attacks', '?')} the classifier called Benign",
+        "#22d3ee")
+    kpi(c2, "Extra benign false alarms", f"{am.get('rule_benign_false_alarm_rate', 0):.2%}",
+        "cost of the unknown-attack rule", "#eab308")
+    kpi(c3, "Isolation Forest alone", f"{am['attack_flag_rate']:.1%}",
+        "of attacks flagged (weak on this dataset)", "#94a3b8")
 
 st.divider()
 name = st.selectbox("Details for", [m["name"] for m in models])

@@ -12,9 +12,9 @@ import time
 from pathlib import Path
 
 import pandas as pd
+from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.class_weight import compute_sample_weight
 
 from nids.config import load_config, models_dir, resolve
 from nids.data.clean import clean, split_xy
@@ -22,7 +22,7 @@ from nids.data.load import load_raw
 from nids.features.pipeline import build_pipeline, selected_features
 from nids.models.anomaly import AnomalyDetector
 from nids.models.evaluate import BENIGN, evaluate
-from nids.models.factory import make_model
+from nids.models.factory import class_sample_weights, make_model
 from nids.models.profiles import benign_baseline, drift_reference, fingerprints, save_profiles
 from nids.models.registry import mark_best, save_model
 
@@ -62,16 +62,29 @@ def fit_one(name: str, X_train, y_train, cfg: dict, n_features: int):
                           n_features=n_features, method=cfg["features"]["method"], seed=seed)
     fit_params = {}
     if name == "xgb":
-        fit_params["clf__sample_weight"] = compute_sample_weight("balanced", y_train)
+        fit_params["clf__sample_weight"] = class_sample_weights(
+            y_train, cfg.get("xgb_weight_power", 0.5))
     pipe.fit(X_train, y_train, **fit_params)
     return pipe, len(X_train)
 
 
 def train_all(df: pd.DataFrame, cfg: dict, out_root: Path | None = None) -> dict:
+    """Train every model on the training split, choose the best on the VALIDATION split,
+    and report all of them on the untouched TEST split (70/15/15 by default)."""
     out_root = out_root or models_dir()
-    X_train, X_test, y_train, y_test, classes = split(df, cfg)
+    X_trval, X_test, y_trval, y_test, classes = split(df, cfg)
+    # Validation share is given as a share of the whole dataset (default 15%)
+    val_frac = cfg["data"].get("val_size", 0.15) / (1 - cfg["data"]["test_size"])
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_trval, y_trval, test_size=val_frac, stratify=y_trval, random_state=cfg["seed"])
+    cap = cfg["data"].get("max_train_rows")
+    if cap and len(X_train) > cap:
+        # Memory/time cap on TRAINING rows only; validation and test stay full size
+        X_train, _, y_train, _ = train_test_split(
+            X_train, y_train, train_size=cap, stratify=y_train, random_state=cfg["seed"])
     feature_names = list(X_train.columns)
     print("Class balance:\n" + df["Label"].value_counts().to_string())
+    print(f"Split: train {len(X_train):,} / validation {len(X_val):,} / test {len(X_test):,}")
 
     results, pipes = {}, {}
     for name in cfg["models"]:
@@ -80,8 +93,9 @@ def train_all(df: pd.DataFrame, cfg: dict, out_root: Path | None = None) -> dict
         pipe, n_rows = fit_one(name, X_train, y_train, cfg, len(feature_names))
         train_s = time.perf_counter() - t0
 
+        val_f1 = float(f1_score(y_val, pipe.predict(X_val), average="macro"))
         metrics = evaluate(pipe, X_test, y_test, classes)
-        metrics["train_seconds"] = train_s
+        metrics.update(train_seconds=train_s, val_macro_f1=val_f1)
         save_model(name, pipe, {
             "classes": classes,
             "features": feature_names,
@@ -89,12 +103,16 @@ def train_all(df: pd.DataFrame, cfg: dict, out_root: Path | None = None) -> dict
             "metrics": metrics,
             "config": cfg,
             "train_rows": n_rows,
+            "split_rows": {"train": len(X_train), "validation": len(X_val),
+                           "test": len(X_test)},
         }, root=out_root)
         results[name], pipes[name] = metrics, pipe
-        print(f"  macro-F1={metrics['macro_f1']:.4f}  FPR={metrics['false_positive_rate']}  "
+        print(f"  val macro-F1={val_f1:.4f}  test macro-F1={metrics['macro_f1']:.4f}  "
+              f"FPR={metrics['false_positive_rate']}  "
               f"latency={metrics['latency_ms_per_flow']:.2f}ms  train={train_s:.1f}s")
 
-    best = max(results, key=lambda n: results[n]["macro_f1"])
+    # Model choice uses validation only: picking by test score would leak the test set
+    best = max(results, key=lambda n: results[n]["val_macro_f1"])
     mark_best(best, root=out_root)
 
     # ---- Unknown-attack detector (U4): benign training flows only
@@ -105,13 +123,27 @@ def train_all(df: pd.DataFrame, cfg: dict, out_root: Path | None = None) -> dict
         det.fit(X_benign)
         flagged = det.is_anomaly(X_test)
         is_benign = y_test == benign_idx
+        # Full serving rule: classifier says Benign AND (detector fires OR confidence < min)
+        min_conf = cfg.get("anomaly", {}).get("min_benign_confidence", 0.0)
+        proba = pipes[best].predict_proba(X_test)
+        said_benign = proba.argmax(axis=1) == benign_idx
+        unknown = said_benign & (flagged | (proba[:, benign_idx] < min_conf))
+        missed = said_benign & ~is_benign
         det_metrics = {
             "benign_false_alarm_rate": float(flagged[is_benign].mean()),
             "attack_flag_rate": float(flagged[~is_benign].mean()),
+            "rule_benign_false_alarm_rate": float(unknown[is_benign].mean()),
+            "classifier_missed_attacks": int(missed.sum()),
+            "missed_attacks_recovered": float(unknown[missed].mean()) if missed.any() else None,
         }
         det.save(out_root / "anomaly", det_metrics)
-        print(f"\nAnomaly detector: flags {det_metrics['attack_flag_rate']:.1%} of attacks, "
+        rec = det_metrics["missed_attacks_recovered"]
+        print(f"\nAnomaly detector alone: flags {det_metrics['attack_flag_rate']:.1%} of attacks, "
               f"{det_metrics['benign_false_alarm_rate']:.2%} of benign")
+        print(f"Unknown-attack rule: recovers "
+              f"{'n/a' if rec is None else f'{rec:.1%}'} of the {int(missed.sum())} attacks the "
+              f"classifier called Benign, at {det_metrics['rule_benign_false_alarm_rate']:.2%} "
+              "extra benign false alarms")
 
         # ---- Profiles for stories (U1), drift (U7) and fingerprints (U9)
         sel = selected_features(pipes[best], feature_names)
@@ -121,9 +153,10 @@ def train_all(df: pd.DataFrame, cfg: dict, out_root: Path | None = None) -> dict
                       reference=drift_reference(X_train),
                       fingerprints=fingerprints(X_train, y_train_lbl, sel[:8]))
 
-    print(f"\nBest model: {best}")
-    print(pd.DataFrame({n: {k: r[k] for k in ("macro_f1", "accuracy", "false_positive_rate",
-                                                "latency_ms_per_flow", "train_seconds")}
+    print(f"\nBest model (chosen on validation): {best}")
+    print(pd.DataFrame({n: {k: r[k] for k in ("val_macro_f1", "macro_f1", "accuracy",
+                                                "false_positive_rate", "latency_ms_per_flow",
+                                                "train_seconds")}
                         for n, r in results.items()}).T.round(4).to_string())
     return results
 

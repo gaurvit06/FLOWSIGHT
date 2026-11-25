@@ -4,15 +4,27 @@ data:
   raw_dir: data/raw                       # put the CICIDS2017 CSVs here
   processed_path: data/processed/flows.parquet
   sample_frac: 1.0                        # use e.g. 0.1 while developing
-  test_size: 0.2
+  test_size: 0.15                         # untouched holdout, used once for final numbers
+  val_size: 0.15                          # model selection (train = remaining 70%)
+  max_train_rows: 600000                  # stratified cap on TRAINING rows only (RAM/time);
+                                          # validation and test always stay full size
   drop_other: true                        # drop classes we don't model (Bot, Web Attack, ...)
 
 features:
   k: 20                                   # how many features to keep
-  method: f_classif                       # f_classif (fast) | mutual_info (slower, non-linear)
+  method: tree                            # tree (ExtraTrees importance) | f_classif | mutual_info
+
+xgb_weight_power: 0.5                     # XGBoost class weights = balanced ** power.
+                                          # 1.0 over-predicts rare classes (BruteForce
+                                          # precision 0.29 on CIC-IDS2017); 0.5 is gentler
 
 models: [rf, xgb, svm]
 svm_max_rows: 200000                      # SVM doesn't scale to millions of rows — subsample
+
+anomaly:
+  quantile: 0.005                         # share of benign training flows allowed as false alarms
+  min_benign_confidence: 0.9              # classifier says Benign but is less sure than this
+                                          # -> Unknown-Anomaly (≈0.2% benign false alarms)
 
 artifacts_dir: models
 

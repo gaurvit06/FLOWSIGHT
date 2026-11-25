@@ -12,10 +12,9 @@ import pandas as pd
 from scipy.stats import randint, uniform
 from sklearn.metrics import confusion_matrix, f1_score, recall_score
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold, train_test_split
-from sklearn.utils.class_weight import compute_sample_weight
 
 from nids.features.pipeline import build_pipeline
-from nids.models.factory import make_model
+from nids.models.factory import class_sample_weights, make_model
 from nids.models.train import fit_one
 
 PARAM_SPACES = {
@@ -83,8 +82,10 @@ def random_search(name: str, X: pd.DataFrame, y: np.ndarray, cfg: dict, n_iter: 
     search = RandomizedSearchCV(pipe, PARAM_SPACES[name], n_iter=n_iter, cv=cv,
                                 scoring="f1_macro", random_state=cfg["seed"], n_jobs=1,
                                 verbose=1)
-    fit_params = {"clf__sample_weight": compute_sample_weight("balanced", y)} \
-        if name == "xgb" else {}
+    fit_params = {}
+    if name == "xgb":
+        fit_params["clf__sample_weight"] = class_sample_weights(
+            y, cfg.get("xgb_weight_power", 0.5))
     search.fit(X, y, **fit_params)
     return search.best_params_, float(search.best_score_)
 

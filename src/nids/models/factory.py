@@ -10,6 +10,20 @@ from xgboost import XGBClassifier
 TREE_MODELS = {"rf", "xgb"}
 
 
+def class_sample_weights(y, power: float = 0.5):
+    """Per-row weights = (balanced class weight) ** power.
+
+    power=1 is sklearn's "balanced"; on CIC-IDS2017 that makes XGBoost over-predict the rare
+    BruteForce class (precision 0.29). power=0.5 softens it (see DECISIONS.md D14).
+    """
+    import numpy as np
+
+    y = np.asarray(y)
+    counts = np.bincount(y)
+    w = (len(y) / (len(counts) * np.maximum(counts, 1))) ** power
+    return w[y]
+
+
 def make_model(name: str, seed: int = 42):
     if name == "rf":
         return RandomForestClassifier(
