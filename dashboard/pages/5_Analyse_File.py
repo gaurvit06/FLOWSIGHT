@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from common import LABEL_COLORS, PLOTLY_LAYOUT, kpi, post
+from common import DEMO, LABEL_COLORS, PLOTLY_LAYOUT, kpi, post
 from common import setup as page_setup
 
 page_setup("Analyse a file")
@@ -16,8 +16,10 @@ st.write("Upload a CSV of flows with the same columns as the training data (for 
          "show how many predictions match.")
 f = st.file_uploader("Flows CSV", type="csv")
 c1, c2 = st.columns(2)
-max_rows = c1.number_input("Rows to analyse", 100, 50_000, 5_000, step=1_000)
-store = c2.checkbox("Save results to history (Overview & Incidents)", value=False)
+max_rows = c1.number_input("Rows to analyse", 100, 5_000 if DEMO else 50_000, 5_000,
+                           step=1_000)
+store = False if DEMO else c2.checkbox("Save results to history (Overview & Incidents)",
+                                       value=False)
 
 
 @st.cache_data(show_spinner=False)

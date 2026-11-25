@@ -1,9 +1,15 @@
-"""Shared look and API helpers for every dashboard page."""
+"""Shared look and API helpers for every dashboard page.
+
+Visual identity: "FlowSight SOC console": a security-operations terminal look of its own
+(monospace type, cyan/amber on near-black, shell-prompt page headers, log-style alerts,
+scanlines, a fixed status bar). All styling lives in this file and .streamlit/config.toml.
+"""
 
 from __future__ import annotations
 
 import html
 import os
+from datetime import datetime, timezone
 
 import httpx
 import pandas as pd
@@ -11,35 +17,116 @@ import plotly.graph_objects as go
 import streamlit as st
 
 API = os.environ.get("NIDS_API", "http://localhost:8000")
+DEMO = os.environ.get("FLOWSIGHT_DEMO", "").lower() in {"1", "true", "yes"}
 
-SEV_COLORS = {"Critical": "#ef4444", "High": "#f97316", "Medium": "#eab308", "Low": "#22c55e"}
+# ---- palette
+BG, PANEL, BORDER = "#05080f", "#0a1120", "#12324a"
+CYAN, AMBER, TEXT, DIM = "#00e5ff", "#ffb000", "#cfe8f5", "#5f7d95"
+SEV_COLORS = {"Critical": "#ff3b5c", "High": "#ff8a00", "Medium": "#ffd000", "Low": "#3ddc97"}
 LABEL_COLORS = {
-    "Benign": "#475569", "DDoS": "#ef4444", "DoS": "#f97316", "PortScan": "#a855f7",
-    "BruteForce": "#eab308", "Unknown-Anomaly": "#22d3ee",
+    "Benign": "#2f4a63", "DDoS": "#ff3b5c", "DoS": "#ff8a00", "PortScan": "#b18cff",
+    "BruteForce": "#ffd000", "Unknown-Anomaly": CYAN,
 }
-PLOTLY_LAYOUT = {"template": "plotly_dark", "paper_bgcolor": "rgba(0,0,0,0)",
-                     "plot_bgcolor": "rgba(0,0,0,0)", "margin": {"l": 10, "r": 10, "t": 40, "b": 10},
-                     "font": {"color": "#e5e7eb"}}
+MONO = "'JetBrains Mono', 'Cascadia Code', Consolas, monospace"
+PLOTLY_LAYOUT = {
+    "template": "plotly_dark", "paper_bgcolor": "rgba(0,0,0,0)", "plot_bgcolor": "rgba(0,0,0,0)",
+    "margin": {"l": 10, "r": 10, "t": 44, "b": 10},
+    "font": {"color": TEXT, "family": MONO, "size": 12},
+    "title": {"font": {"color": CYAN, "size": 13}},
+    "xaxis": {"gridcolor": "#0f2536", "zerolinecolor": "#12324a"},
+    "yaxis": {"gridcolor": "#0f2536", "zerolinecolor": "#12324a"},
+}
 
-CSS = """
+# Page title -> the shell command shown in its prompt header
+COMMANDS = {
+    "Overview": "flowsight status --live",
+    "Incidents": "flowsight incidents --timeline",
+    "Investigate · what-if": "flowsight whatif --alert",
+    "Models": "flowsight models --compare",
+    "Analyst feedback": "flowsight review --queue",
+    "Analyse a file": "flowsight analyse ./flows.csv",
+    "Method & limits": "man flowsight",
+}
+
+# FlowSight's ASCII logo, assembled from a small block font so the columns always line up
+_FONT = {
+    "F": [" ___ ", "| __|", "| _| ", "|_|  "],
+    "L": [" _    ", "| |   ", "| |__ ", "|____|"],
+    "O": ["  ___  ", " / _ \\ ", "| (_) |", " \\___/ "],
+    "W": ["__      __", "\\ \\    / /", " \\ \\/\\/ / ", "  \\_/\\_/  "],
+    "S": [" ___ ", "/ __|", "\\__ \\", "|___/"],
+    "I": [" ___ ", "|_ _|", " | | ", "|___|"],
+    "G": ["  ___ ", " / __|", "| (_ |", " \\___|"],
+    "H": [" _  _ ", "| || |", "| __ |", "|_||_|"],
+    "T": [" _____ ", "|_   _|", "  | |  ", "  |_|  "],
+}
+LOGO = "\n".join("".join(_FONT[c][row] for c in "FLOWSIGHT") for row in range(4))
+
+CSS = f"""
 <style>
-.block-container {padding-top: 1.6rem;}
-.fs-brand {font-size: 1.35rem; font-weight: 700; letter-spacing: .02em;}
-.fs-brand span {color: #22d3ee;}
-.fs-kpi {background: #131a2e; border: 1px solid #1f2a44; border-radius: 12px;
-         padding: 14px 16px; height: 100%;}
-.fs-kpi .l {color: #94a3b8; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
-           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.fs-kpi .v {font-size: 1.8rem; font-weight: 700; margin-top: 2px;}
-.fs-kpi .s {color: #94a3b8; font-size: .8rem;}
-.fs-pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem;
-          font-weight: 700; color: #0b1020; margin-right: 6px;}
-.fs-tag {display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .75rem;
-         font-weight: 600; border: 1px solid; margin-right: 6px;}
-.fs-card {background: #131a2e; border-left: 4px solid var(--c); border-radius: 10px;
-          padding: 12px 14px; margin-bottom: 10px;}
-.fs-card .meta {color: #94a3b8; font-size: .78rem; margin-top: 6px;}
-.fs-banner {border-radius: 10px; padding: 10px 14px; margin: 6px 0 14px 0; font-size: .92rem;}
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap');
+html, body, [class*="st-"], .stMarkdown, .stDataFrame, button, input, textarea, select {{
+  font-family: {MONO} !important; }}
+.stApp {{ background: radial-gradient(1200px 600px at 80% -10%, #06202e 0%, {BG} 55%); }}
+.stApp::after {{ content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background: repeating-linear-gradient(0deg, rgba(0,229,255,.025) 0 1px, transparent 1px 3px); }}
+.block-container {{ padding-top: 3.2rem; padding-bottom: 4rem; }}
+section[data-testid="stSidebar"] {{ background: #040910; border-right: 1px solid {BORDER}; }}
+h1, h2, h3 {{ font-family: {MONO} !important; letter-spacing: -.01em; }}
+h2, h3 {{ color: {CYAN} !important; font-size: 1.05rem !important; text-transform: uppercase;
+  letter-spacing: .08em !important; }}
+h2::before, h3::before {{ content: "## "; color: {DIM}; }}
+
+.fs-logo {{ color: {CYAN}; font-size: 1.05rem; line-height: 1.15; white-space: nowrap; margin: 0;
+  font-family: {MONO};
+  text-shadow: 0 0 12px rgba(0,229,255,.35); overflow-x: auto; }}
+.fs-tagline {{ color: {AMBER}; font-size: .78rem; letter-spacing: .12em; margin: 6px 0 18px; }}
+.fs-prompt {{ color: {DIM}; font-size: .85rem; margin-bottom: 2px; }}
+.fs-prompt .u {{ color: #3ddc97; }} .fs-prompt .p {{ color: {CYAN}; }}
+.fs-prompt .c {{ color: {TEXT}; }}
+.fs-cursor {{ display: inline-block; width: .6em; background: {CYAN}; margin-left: 2px;
+  animation: fs-blink 1.1s steps(1) infinite; }}
+@keyframes fs-blink {{ 50% {{ opacity: 0; }} }}
+.fs-h1 {{ font-size: 1.9rem; font-weight: 800; color: {TEXT}; margin: 0 0 14px;
+  border-bottom: 1px dashed {BORDER}; padding-bottom: 10px; }}
+
+.fs-brand {{ color: {CYAN}; font-weight: 800; letter-spacing: .14em; font-size: 1.05rem; }}
+.fs-brand .dot {{ color: {AMBER}; }}
+.fs-side {{ color: {DIM}; font-size: .74rem; line-height: 1.6; }}
+.fs-side b {{ color: {TEXT}; font-weight: 600; }}
+.fs-on {{ color: #3ddc97; }} .fs-off {{ color: #ff3b5c; }}
+
+.fs-kpi {{ background: linear-gradient(180deg, {PANEL}, #070d18); border: 1px solid {BORDER};
+  border-top: 2px solid var(--k, {CYAN}); padding: 12px 14px; height: 100%; }}
+.fs-kpi .l {{ color: {DIM}; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+.fs-kpi .l::before {{ content: ":: "; }}
+.fs-kpi .v {{ font-size: 1.75rem; font-weight: 800; margin-top: 4px; }}
+.fs-kpi .s {{ color: {DIM}; font-size: .72rem; margin-top: 2px; }}
+
+.fs-pill {{ display: inline-block; padding: 0 6px; font-size: .72rem; font-weight: 800;
+  color: {BG}; margin-right: 6px; }}
+.fs-tag {{ display: inline-block; padding: 0 6px; font-size: .72rem; font-weight: 600;
+  border: 1px solid; margin-right: 6px; text-transform: uppercase; }}
+
+.fs-log {{ background: {PANEL}; border: 1px solid {BORDER}; border-left: 3px solid var(--c);
+  padding: 10px 12px; margin-bottom: 8px; }}
+.fs-log .hd {{ font-size: .76rem; color: {DIM}; }}
+.fs-log .hd .sev {{ color: var(--c); font-weight: 800; }}
+.fs-log .hd .lbl {{ color: {TEXT}; font-weight: 600; }}
+.fs-log .msg {{ color: {TEXT}; font-size: .86rem; margin-top: 6px; line-height: 1.5; }}
+.fs-log .msg::before {{ content: "> "; color: var(--c); }}
+
+.fs-banner {{ padding: 8px 12px; margin: 4px 0 14px; font-size: .84rem; border: 1px solid;
+  background: {PANEL}; }}
+.fs-statusbar {{ position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000001;
+  background: #030609; border-top: 1px solid {BORDER}; color: {DIM}; font-size: .72rem;
+  padding: 5px 16px; display: flex; gap: 18px; white-space: nowrap; overflow: hidden; }}
+.fs-statusbar b {{ color: {CYAN}; font-weight: 600; }}
+.fs-statusbar .amber {{ color: {AMBER}; }}
+div[data-testid="stDataFrame"] {{ border: 1px solid {BORDER}; }}
+.stButton > button {{ border-radius: 0; border: 1px solid {BORDER}; background: {PANEL}; }}
+.stButton > button:hover {{ border-color: {CYAN}; color: {CYAN}; }}
 </style>
 """
 
@@ -48,21 +135,52 @@ def setup(title: str) -> dict:
     st.set_page_config(page_title=f"FlowSight · {title}", page_icon="🛰️", layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
     with st.sidebar:
-        st.markdown('<div class="fs-brand">Flow<span>Sight</span></div>', unsafe_allow_html=True)
-        st.caption("Explainable network intrusion detection")
+        st.markdown('<div class="fs-brand">FLOWSIGHT<span class="dot">_</span></div>'
+                    '<div class="fs-side">explainable network intrusion detection</div>',
+                    unsafe_allow_html=True)
     try:
         health = get("/health")
     except Exception as e:  # noqa: BLE001
         st.error(f"Can't reach the API at {API}. Start it with:\n\n"
                  f"`uvicorn nids.api.main:app --port 8000`\n\n{e}")
         st.stop()
+    det = health["anomaly_detector"]
     with st.sidebar:
-        st.caption(f"Model: **{health['model']}** · unknown-attack detector: "
-                   f"**{'on' if health['anomaly_detector'] else 'off'}**")
-        if st.button("↻ Refresh", width="stretch"):
+        st.markdown(
+            f'<div class="fs-side">api <span class="fs-on">● online</span><br>'
+            f'model <b>{html.escape(health["model"])}</b><br>'
+            f'unknown-attack rule <span class="{"fs-on" if det else "fs-off"}">'
+            f'{"● armed" if det else "○ off"}</span>'
+            f'{"<br>mode <b>public demo</b>" if DEMO else ""}</div>', unsafe_allow_html=True)
+        if st.button("↻ refresh", width="stretch"):
             st.cache_data.clear()
-    st.title(title)
+    cmd = COMMANDS.get(title, f"flowsight {title.lower()}")
+    st.markdown(f'<div class="fs-prompt"><span class="u">analyst@flowsight</span>:'
+                f'<span class="p">~</span>$ <span class="c">{html.escape(cmd)}</span>'
+                f'<span class="fs-cursor">&nbsp;</span></div>'
+                f'<div class="fs-h1">{html.escape(title)}</div>', unsafe_allow_html=True)
+    status_bar(health)
     return health
+
+
+def logo() -> None:
+    """The big ASCII logo (Overview page only)."""
+    # Markdown collapses runs of spaces, so encode them explicitly to keep the letters aligned
+    art = html.escape(LOGO).replace(" ", "&nbsp;").replace("\n", "<br>")
+    st.markdown(f'<div class="fs-logo">{art}</div>'
+                '<div class="fs-tagline">:: soc console // flow-level intrusion detection '
+                '// every alert explained ::</div>', unsafe_allow_html=True)
+
+
+def status_bar(health: dict) -> None:
+    now = datetime.now(timezone.utc).strftime("%H:%M UTC")
+    st.markdown(
+        f'<div class="fs-statusbar"><span><b>FLOWSIGHT</b> // soc-console</span>'
+        f'<span>model <b>{html.escape(health["model"])}</b></span>'
+        f'<span>dataset <b>CIC-IDS2017</b></span>'
+        f'<span>unknown-attack rule <b>{"armed" if health["anomaly_detector"] else "off"}</b>'
+        f'</span>{"<span class=amber>PUBLIC DEMO</span>" if DEMO else ""}'
+        f'<span style="margin-left:auto">{now}</span></div>', unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=3, show_spinner=False)
@@ -78,8 +196,8 @@ def post(path: str, json=None, params=None):
     return r.json()
 
 
-def kpi(col, label: str, value, sub: str = "", color: str = "#e5e7eb") -> None:
-    col.markdown(f'<div class="fs-kpi"><div class="l">{label}</div>'
+def kpi(col, label: str, value, sub: str = "", color: str = TEXT) -> None:
+    col.markdown(f'<div class="fs-kpi" style="--k:{color}"><div class="l">{label}</div>'
                  f'<div class="v" style="color:{color}">{value}</div>'
                  f'<div class="s">{sub}</div></div>', unsafe_allow_html=True)
 
@@ -87,7 +205,7 @@ def kpi(col, label: str, value, sub: str = "", color: str = "#e5e7eb") -> None:
 def sev_pill(sev: str | None) -> str:
     if not sev:
         return ""
-    return f'<span class="fs-pill" style="background:{SEV_COLORS.get(sev, "#64748b")}">{sev}</span>'
+    return f'<span class="fs-pill" style="background:{SEV_COLORS.get(sev, DIM)}">{sev.upper()}</span>'
 
 
 def label_tag(label: str) -> str:
@@ -96,18 +214,22 @@ def label_tag(label: str) -> str:
 
 
 def story_card(a: dict) -> None:
-    color = SEV_COLORS.get(a.get("severity"), "#475569")
-    verdict = {"confirmed": " · ✅ confirmed", "false_positive": " · ❌ false positive"}.get(
+    """An alert rendered as a log entry."""
+    sev = a.get("severity")
+    color = SEV_COLORS.get(sev, DIM)
+    verdict = {"confirmed": " · ✓ confirmed", "false_positive": " · ✗ false positive"}.get(
         a.get("verdict"), "")
+    ts = a["ts"][11:19] + "Z"
     st.markdown(
-        f'<div class="fs-card" style="--c:{color}">{sev_pill(a.get("severity"))}'
-        f'{label_tag(a["label"])}<div style="margin-top:8px">{html.escape(a.get("story") or "")}'
-        f'</div><div class="meta">alert #{a["id"]} · {a["ts"][:19].replace("T", " ")} UTC · '
-        f'incident #{a.get("incident_id") or "-"}{verdict}</div></div>',
+        f'<div class="fs-log" style="--c:{color}"><div class="hd">'
+        f'<span class="sev">[{(sev or "info").upper()}]</span> {ts} '
+        f'<span class="lbl">{html.escape(a["label"])}</span> · alert#{a["id"]} · '
+        f'incident#{a.get("incident_id") or "-"}{verdict}</div>'
+        f'<div class="msg">{html.escape(a.get("story") or "")}</div></div>',
         unsafe_allow_html=True)
 
 
-def shap_chart(explanation: list[dict], title: str = "What pushed the model to this verdict"):
+def shap_chart(explanation: list[dict], title: str = "why: feature contributions (SHAP)"):
     if not explanation:
         st.caption("No feature-level explanation for this prediction.")
         return
@@ -115,19 +237,19 @@ def shap_chart(explanation: list[dict], title: str = "What pushed the model to t
     fig = go.Figure(go.Bar(
         x=ex["contribution"], y=ex["feature"], orientation="h",
         text=ex["value"].map(lambda v: f"value {v:,.2f}"), textposition="auto",
-        marker_color=["#ef4444" if c > 0 else "#38bdf8" for c in ex["contribution"]]))
-    fig.update_layout(**PLOTLY_LAYOUT, title=title, height=300,
-                      xaxis_title="contribution (+ pushes towards the verdict)")
+        marker_color=[SEV_COLORS["Critical"] if c > 0 else CYAN for c in ex["contribution"]]))
+    fig.update_layout(**{**PLOTLY_LAYOUT, "title": {"text": title, **PLOTLY_LAYOUT["title"]}},
+                      height=300, xaxis_title="contribution (+ pushes towards the verdict)")
     st.plotly_chart(fig, width="stretch")
 
 
 def feedback_buttons(a: dict, key: str = "") -> None:
     c1, c2, _ = st.columns([1, 1, 3])
-    if c1.button("✅ Confirm", key=f"ok{key}{a['id']}"):
+    if c1.button("✓ confirm", key=f"ok{key}{a['id']}"):
         post(f"/feedback/{a['id']}", json={"verdict": "confirmed"})
         st.cache_data.clear()
         st.rerun()
-    if c2.button("❌ False positive", key=f"fp{key}{a['id']}"):
+    if c2.button("✗ false positive", key=f"fp{key}{a['id']}"):
         post(f"/feedback/{a['id']}", json={"verdict": "false_positive"})
         st.cache_data.clear()
         st.rerun()

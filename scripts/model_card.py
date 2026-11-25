@@ -65,8 +65,8 @@ def main() -> None:
         f"(seed {cfg['seed']}). The model was **chosen on validation** and evaluated "
         "**once** on test."), "",
         "## Model",
-        (f"- Pipeline: StandardScaler → SelectKBest(k={cfg['features']['k']}, "
-        f"{cfg['features']['method']}) → {meta['name']}"),
+        (f"- Pipeline: StandardScaler → top-{cfg['features']['k']} feature selection "
+         f"(`{cfg['features']['method']}`) → {meta['name']}"),
         f"- Selected features: {', '.join(meta['selected_features'])}", "",
         "## Performance (held-out test set)",
         (f"- Macro-F1 **{m['macro_f1']:.4f}** · accuracy {m['accuracy']:.4f} · "

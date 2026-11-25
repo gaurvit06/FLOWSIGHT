@@ -164,7 +164,8 @@ def baseline():
 def reports():
     """Experiment results written by the scripts in scripts/ (if they have been run)."""
     out = {}
-    for name in ("results", "zero_day", "cross_dataset", "feature_selection", "imbalance",
+    for name in ("FINAL_REPORT", "results", "zero_day", "cross_dataset", "feature_selection",
+                 "imbalance", "port_ablation",
                  "shap_global", "DATASET", "MODEL_CARD"):
         p = ROOT / "reports" / f"{name}.md"
         if p.exists():

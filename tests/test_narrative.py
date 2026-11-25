@@ -27,6 +27,13 @@ def test_story_prefers_unusual_reasons():
     assert "packet rate" in s and "average packet size" not in s
 
 
+def test_story_when_nothing_is_unusual():
+    top = [{"feature": "Average Packet Size", "value": 500, "contribution": 2.0}]
+    s = story("DoS", 1.0, top, BASE)
+    assert "no single feature is out of the ordinary" in s
+    assert "within the normal range" not in s
+
+
 def test_story_benign_and_unknown():
     assert "normal traffic" in story("Benign", 0.99, [], BASE)
     s = story("Unknown-Anomaly", 0.7,

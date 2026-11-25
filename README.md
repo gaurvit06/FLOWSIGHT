@@ -23,6 +23,23 @@ FastAPI ─► classifier (scale → select k → RF/XGB/SVM)
 Streamlit dashboard: Overview · Incidents · Investigate (what-if) · Models · Feedback · Analyse File
 ```
 
+**📄 Final report:** [reports/FINAL_REPORT.md](reports/FINAL_REPORT.md). Results on the full
+CIC-IDS2017 dataset: XGBoost **macro-F1 0.9979** on 377,499 held-out flows, 0.07% false
+positives, 1.7 ms per flow, plus honest zero-day and robustness findings.
+
+## Public demo
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_demo.ps1     # prints a public https URL
+powershell -ExecutionPolicy Bypass -File scripts\stop_demo.ps1    # stops everything
+```
+
+The launcher streams real CIC-IDS2017 flows through the API and publishes **only the
+dashboard** through a free serveo.net SSH tunnel (no install needed). It runs in demo mode:
+history can't be cleared, nothing is exported to disk, and uploads are limited to 20 MB and
+5,000 rows. The API stays on localhost. The URL works only while your computer runs the demo,
+and visitors see a one-time serveo warning page first.
+
 ## What makes it different
 
 | | Feature | Where |

@@ -16,7 +16,7 @@ CIC-IDS2017 (see `reports/DATASET.md`). Identifiers (IPs, source port, flow ID, 
 Stratified split: train 600,000 / validation 377,499 / test 377,499 flows (seed 42). The model was **chosen on validation** and evaluated **once** on test.
 
 ## Model
-- Pipeline: StandardScaler → SelectKBest(k=20, tree) → xgb
+- Pipeline: StandardScaler → top-20 feature selection (`tree`) → xgb
 - Selected features: Destination Port, Flow Duration, Bwd Packet Length Max, Bwd Packet Length Mean, Bwd Packet Length Std, Flow IAT Max, Fwd IAT Std, Fwd IAT Max, Max Packet Length, Packet Length Mean, Packet Length Std, Packet Length Variance, PSH Flag Count, ACK Flag Count, Avg Bwd Segment Size, Init_Win_bytes_forward, min_seg_size_forward, Idle Mean, Idle Max, Idle Min
 
 ## Performance (held-out test set)

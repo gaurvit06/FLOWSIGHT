@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-from common import feedback_buttons, get, kpi, post, story_card
+from common import DEMO, feedback_buttons, get, kpi, post, story_card
 from common import setup as page_setup
 
 page_setup("Analyst feedback")
@@ -36,7 +36,9 @@ with right:
     st.subheader("Retraining data")
     st.write("Reviewed flows are exported with corrected labels (false positive → Benign). "
              "Add the file to `data/raw/` to include it in the next training run.")
-    if st.button("Export labelled flows", width="stretch"):
+    if DEMO:
+        st.caption("Export is disabled in the public demo.")
+    elif st.button("Export labelled flows", width="stretch"):
         r = post("/feedback/export")
         st.success(f"Exported {r['rows']} rows to `{r['path']}`") if r["rows"] else \
             st.warning("Nothing reviewed yet.")

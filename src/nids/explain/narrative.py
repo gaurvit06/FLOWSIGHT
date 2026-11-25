@@ -109,6 +109,12 @@ def _story(label: str, confidence: float, top_features: list[dict], baseline: di
         head = f"Flagged as {label} ({confidence:.0%} confident)"
     if not reasons:
         return head + "."
+    if not strong:
+        # Nothing is individually unusual: say so instead of listing a "normal" value
+        f = top[0]
+        return (f"{head}: no single feature is out of the ordinary; the verdict comes from "
+                f"the combination, led by {friendly(f['feature'])} "
+                f"({_fmt(f['value'])}{UNITS.get(f['feature'], '')}).")
     if len(reasons) == 1:
         return f"{head}: {reasons[0]}."
     return f"{head}: {'; '.join(reasons[:-1])}; and {reasons[-1]}."

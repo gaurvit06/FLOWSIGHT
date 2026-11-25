@@ -64,10 +64,17 @@ with c2:
 """)
 
 st.divider()
-for key, title in [("DATASET", "Dataset audit & provenance"), ("MODEL_CARD", "Model card")]:
+DOCS = [
+    ("FINAL_REPORT", "Final report", "the report is written by hand: reports/FINAL_REPORT.md"),
+    ("DATASET", "Dataset audit & provenance", "python scripts/audit_dataset.py"),
+    ("MODEL_CARD", "Model card", "python scripts/model_card.py"),
+    ("port_ablation", "Destination Port ablation", "python scripts/port_ablation.py"),
+]
+for key, title, how in DOCS:
     with st.expander(title, expanded=False):
         if key in reports:
-            st.markdown(reports[key])
+            # figure links in the reports are relative to reports/; they can't load here
+            st.markdown("\n".join(line for line in reports[key].splitlines()
+                                  if not line.startswith("![")))
         else:
-            script = "audit_dataset.py" if key == "DATASET" else "model_card.py"
-            st.caption(f"Not generated yet. Run `python scripts/{script}`.")
+            st.caption(f"Not generated yet: `{how}`.")
