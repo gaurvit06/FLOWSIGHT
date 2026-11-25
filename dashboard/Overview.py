@@ -1,6 +1,6 @@
 """FlowSight dashboard: Overview page.
 
-    streamlit run dashboard/app.py
+    streamlit run dashboard/Overview.py
 Needs the API running. Other pages live in dashboard/pages/.
 """
 

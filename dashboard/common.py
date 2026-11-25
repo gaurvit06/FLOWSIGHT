@@ -28,7 +28,8 @@ CSS = """
 .fs-brand span {color: #22d3ee;}
 .fs-kpi {background: #131a2e; border: 1px solid #1f2a44; border-radius: 12px;
          padding: 14px 16px; height: 100%;}
-.fs-kpi .l {color: #94a3b8; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;}
+.fs-kpi .l {color: #94a3b8; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 .fs-kpi .v {font-size: 1.8rem; font-weight: 700; margin-top: 2px;}
 .fs-kpi .s {color: #94a3b8; font-size: .8rem;}
 .fs-pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem;

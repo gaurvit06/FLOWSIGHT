@@ -13,7 +13,7 @@ serve:
 	uvicorn nids.api.main:app --reload --port 8000
 
 dashboard:
-	streamlit run dashboard/app.py
+	streamlit run dashboard/Overview.py
 
 replay:
 	python -m nids.capture.replay --n 500 --delay 0.05

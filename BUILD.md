@@ -204,7 +204,7 @@ Rework the dashboard into five pages:
 | **Models** | Comparison table, confusion matrices, feature-selection curve, **attack fingerprint radar (U9):** median normalised value of the top 8 features per class |
 | **Feedback** | **(U6)** Each alert has ✅ Confirmed / ❌ False positive buttons stored in a `feedback` table. Shows precision measured from analyst labels, and exports labelled flows to `data/feedback/` for retraining. |
 
-- [x] Split `dashboard/app.py` into `dashboard/pages/*.py` (Streamlit multipage)
+- [x] Split `dashboard/Overview.py` into `dashboard/pages/*.py` (Streamlit multipage)
 - [x] New endpoints: `POST /feedback/{id}`, `GET /feedback/summary`, `GET /incidents`
 - [x] Pick a consistent theme in `.streamlit/config.toml`, plus one severity colour scale used
       everywhere
@@ -267,7 +267,7 @@ nids/
 │   ├── storage/    db.py  incidents.py  feedback.py
 │   ├── capture/    replay.py  live.py
 │   └── api/        main.py  schemas.py
-├── dashboard/      app.py  common.py  pages/   (theme: .streamlit/config.toml)
+├── dashboard/      Overview.py  common.py  pages/   (theme: .streamlit/config.toml)
 └── tests/
 ```
 

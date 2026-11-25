@@ -56,7 +56,7 @@ Then use three terminals:
 
 ```powershell
 uvicorn nids.api.main:app --port 8000                 # API, docs at http://localhost:8000/docs
-streamlit run dashboard/app.py                        # dashboard at http://localhost:8501
+streamlit run dashboard/Overview.py                        # dashboard at http://localhost:8501
 python -m nids.capture.replay --n 500 --delay 0.05    # stream traffic through it
 ```
 

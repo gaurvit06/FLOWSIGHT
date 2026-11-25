@@ -4,8 +4,8 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 root = Path(sys.argv[1]).resolve()
-sys.path.insert(0, str(root / "dashboard"))  # `streamlit run dashboard/app.py` does the same
-pages = [root / "dashboard" / "app.py", *sorted((root / "dashboard" / "pages").glob("*.py"))]
+sys.path.insert(0, str(root / "dashboard"))  # `streamlit run dashboard/Overview.py` does the same
+pages = [root / "dashboard" / "Overview.py", *sorted((root / "dashboard" / "pages").glob("*.py"))]
 bad = 0
 for p in pages:
     at = AppTest.from_file(str(p), default_timeout=60)
