@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Data and trained artifacts are large / reproducible: don't commit them
+data/*
+models/*
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!models/.gitkeep
+*.db

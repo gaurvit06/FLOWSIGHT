@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          pip install -r requirements.lock
+          pip install --no-deps -e .
+      - name: Lint
+        run: ruff check src tests dashboard scripts
+      - name: Train on synthetic data
+        run: |
+          python scripts/make_sample_data.py --rows 10000
+          python -m nids.models.train
+      - name: Tests (incl. model quality gate)
+        run: pytest

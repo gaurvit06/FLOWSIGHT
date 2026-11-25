@@ -1,0 +1,24 @@
+# Train first on the host (python -m nids.models.train) so ./models exists, then:
+#   docker compose up --build
+# API: http://localhost:8000/docs   Dashboard: http://localhost:8501
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 6
+
+  dashboard:
+    build: .
+    command: ["streamlit", "run", "dashboard/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    environment:
+      NIDS_API: http://api:8000
+    ports: ["8501:8501"]
+    depends_on:
+      api:
+        condition: service_healthy

@@ -1,0 +1,20 @@
+# Severity scoring (U2):  score = base[label] x confidence x burst_factor
+# burst_factor = 1 + burst_weight * log10(same-type alerts in the last burst_window_s seconds)
+
+base:
+  DDoS: 0.9               # takes the service offline
+  DoS: 0.8
+  BruteForce: 0.7         # can lead to account takeover
+  Unknown-Anomaly: 0.6    # no known type, so it needs a human look
+  PortScan: 0.4           # reconnaissance, often comes before an attack
+  default: 0.5
+
+burst_window_s: 60
+burst_weight: 0.25
+
+# score thresholds (lower bound of each band)
+bands:
+  Critical: 0.75
+  High: 0.55
+  Medium: 0.30
+  Low: 0.0

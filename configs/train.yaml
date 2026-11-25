@@ -1,0 +1,21 @@
+seed: 42
+
+data:
+  raw_dir: data/raw                       # put the CICIDS2017 CSVs here
+  processed_path: data/processed/flows.parquet
+  sample_frac: 1.0                        # use e.g. 0.1 while developing
+  test_size: 0.2
+  drop_other: true                        # drop classes we don't model (Bot, Web Attack, ...)
+
+features:
+  k: 20                                   # how many features to keep
+  method: f_classif                       # f_classif (fast) | mutual_info (slower, non-linear)
+
+models: [rf, xgb, svm]
+svm_max_rows: 200000                      # SVM doesn't scale to millions of rows — subsample
+
+artifacts_dir: models
+
+thresholds:                               # tests/test_model_quality.py enforces these
+  macro_f1: 0.90
+  attack_recall: 0.90
